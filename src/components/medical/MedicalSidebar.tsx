@@ -9,12 +9,17 @@ import {
   Wind,
   Activity,
   Bug,
-  Languages,
+  ChevronDown,
 } from 'lucide-react';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { Button } from '@/components/ui/button';
+import { useLanguage, SUPPORTED_LANGUAGES, getQuickQuestions, Language } from '@/contexts/LanguageContext';
 import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface MedicalSidebarProps {
   onQuickQuestion: (question: string) => void;
@@ -22,20 +27,21 @@ interface MedicalSidebarProps {
 
 const MedicalSidebar: React.FC<MedicalSidebarProps> = ({ onQuickQuestion }) => {
   const { language, setLanguage, t } = useLanguage();
+  const questions = getQuickQuestions(language);
 
   const quickTopics = [
-    { icon: Stethoscope, label: t('symptoms'), question: language === 'en' ? 'What are common symptoms I should watch out for?' : 'मुझे किन सामान्य लक्षणों पर ध्यान देना चाहिए?' },
-    { icon: Shield, label: t('prevention'), question: language === 'en' ? 'How can I prevent common illnesses?' : 'मैं सामान्य बीमारियों को कैसे रोक सकता हूं?' },
-    { icon: HeartPulse, label: t('firstAid'), question: language === 'en' ? 'What are basic first aid tips?' : 'बुनियादी प्राथमिक चिकित्सा युक्तियाँ क्या हैं?' },
-    { icon: UserCheck, label: t('whenToSeeDoctor'), question: language === 'en' ? 'When should I see a doctor?' : 'मुझे डॉक्टर से कब मिलना चाहिए?' },
+    { icon: Stethoscope, label: t('symptoms'), questionKey: 'symptoms' as const },
+    { icon: Shield, label: t('prevention'), questionKey: 'prevention' as const },
+    { icon: HeartPulse, label: t('firstAid'), questionKey: 'firstAid' as const },
+    { icon: UserCheck, label: t('whenToSeeDoctor'), questionKey: 'whenToSeeDoctor' as const },
   ];
 
   const commonConditions = [
-    { icon: Thermometer, label: t('fever'), question: language === 'en' ? 'What should I do for a fever?' : 'बुखार होने पर मुझे क्या करना चाहिए?' },
-    { icon: Brain, label: t('headache'), question: language === 'en' ? 'What causes headaches and how to relieve them?' : 'सिरदर्द का कारण क्या है और इसे कैसे कम करें?' },
-    { icon: Wind, label: t('cough'), question: language === 'en' ? 'How do I treat a cough and cold at home?' : 'घर पर खांसी और जुकाम का इलाज कैसे करें?' },
-    { icon: Activity, label: t('diabetes'), question: language === 'en' ? 'How can I prevent diabetes?' : 'मैं मधुमेह को कैसे रोक सकता हूं?' },
-    { icon: Bug, label: t('dengue'), question: language === 'en' ? 'What are the symptoms of dengue?' : 'डेंगू के लक्षण क्या हैं?' },
+    { icon: Thermometer, label: t('fever'), questionKey: 'fever' as const },
+    { icon: Brain, label: t('headache'), questionKey: 'headache' as const },
+    { icon: Wind, label: t('cough'), questionKey: 'cough' as const },
+    { icon: Activity, label: t('diabetes'), questionKey: 'diabetes' as const },
+    { icon: Bug, label: t('dengue'), questionKey: 'dengue' as const },
   ];
 
   return (
@@ -53,36 +59,26 @@ const MedicalSidebar: React.FC<MedicalSidebarProps> = ({ onQuickQuestion }) => {
         </div>
       </div>
 
-      {/* Language Toggle */}
+      {/* Language Dropdown */}
       <div className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-2 mb-2">
-          <Languages className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-sidebar-foreground">{t('language')}</span>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant={language === 'en' ? 'default' : 'outline'}
-            size="sm"
-            className={cn(
-              "flex-1 text-xs",
-              language === 'en' && "bg-primary text-primary-foreground"
-            )}
-            onClick={() => setLanguage('en')}
-          >
-            {t('english')}
-          </Button>
-          <Button
-            variant={language === 'hi' ? 'default' : 'outline'}
-            size="sm"
-            className={cn(
-              "flex-1 text-xs",
-              language === 'hi' && "bg-primary text-primary-foreground"
-            )}
-            onClick={() => setLanguage('hi')}
-          >
-            {t('hindi')}
-          </Button>
-        </div>
+        <label className="text-sm font-medium text-sidebar-foreground mb-2 block">
+          {t('language')}
+        </label>
+        <Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
+          <SelectTrigger className="w-full bg-background">
+            <SelectValue placeholder={t('selectLanguage')} />
+          </SelectTrigger>
+          <SelectContent className="bg-popover z-50">
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <SelectItem key={lang.code} value={lang.code}>
+                <span className="flex items-center gap-2">
+                  <span>{lang.nativeName}</span>
+                  <span className="text-muted-foreground text-xs">({lang.name})</span>
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Quick Topics */}
@@ -94,7 +90,7 @@ const MedicalSidebar: React.FC<MedicalSidebarProps> = ({ onQuickQuestion }) => {
           {quickTopics.map((topic, index) => (
             <button
               key={index}
-              onClick={() => onQuickQuestion(topic.question)}
+              onClick={() => onQuickQuestion(questions[topic.questionKey] || '')}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors text-left"
             >
               <topic.icon className="w-4 h-4 text-primary" />
@@ -112,7 +108,7 @@ const MedicalSidebar: React.FC<MedicalSidebarProps> = ({ onQuickQuestion }) => {
           {commonConditions.map((condition, index) => (
             <button
               key={index}
-              onClick={() => onQuickQuestion(condition.question)}
+              onClick={() => onQuickQuestion(questions[condition.questionKey] || '')}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors text-left"
             >
               <condition.icon className="w-4 h-4 text-accent" />
