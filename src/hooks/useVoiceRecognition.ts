@@ -11,17 +11,28 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
   const [transcript, setTranscript] = useState('');
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const optionsRef = useRef(options);
+
+  // Keep options ref updated
+  useEffect(() => {
+    optionsRef.current = options;
+  }, [options]);
 
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     setIsSupported(!!SpeechRecognition);
 
     if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      
+      // Set initial language
+      if (options.language) {
+        recognition.lang = options.language;
+      }
 
-      recognitionRef.current.onresult = (event) => {
+      recognition.onresult = (event) => {
         let finalTranscript = '';
         let interimTranscript = '';
 
@@ -37,22 +48,24 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
         const currentTranscript = finalTranscript || interimTranscript;
         setTranscript(currentTranscript);
         
-        if (finalTranscript && options.onResult) {
-          options.onResult(finalTranscript);
+        if (finalTranscript && optionsRef.current.onResult) {
+          optionsRef.current.onResult(finalTranscript);
         }
       };
 
-      recognitionRef.current.onerror = (event) => {
+      recognition.onerror = (event) => {
         console.error('Speech recognition error:', event.error);
         setIsListening(false);
-        if (options.onError) {
-          options.onError(event.error);
+        if (optionsRef.current.onError) {
+          optionsRef.current.onError(event.error);
         }
       };
 
-      recognitionRef.current.onend = () => {
+      recognition.onend = () => {
         setIsListening(false);
       };
+
+      recognitionRef.current = recognition;
     }
 
     return () => {
@@ -62,11 +75,27 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
     };
   }, []);
 
+  // Update language when it changes
   useEffect(() => {
     if (recognitionRef.current && options.language) {
       recognitionRef.current.lang = options.language;
+      
+      // If currently listening, restart with new language
+      if (isListening) {
+        recognitionRef.current.stop();
+        setTimeout(() => {
+          if (recognitionRef.current) {
+            try {
+              recognitionRef.current.start();
+              setIsListening(true);
+            } catch (error) {
+              console.error('Failed to restart recognition with new language:', error);
+            }
+          }
+        }, 100);
+      }
     }
-  }, [options.language]);
+  }, [options.language, isListening]);
 
   const startListening = useCallback(() => {
     if (recognitionRef.current && !isListening) {
