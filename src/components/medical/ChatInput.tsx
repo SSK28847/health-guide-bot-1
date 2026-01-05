@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Mic, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,15 +31,18 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, initialValue })
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { t, language } = useLanguage();
 
-  const { isListening, transcript, isSupported, toggleListening } = useVoiceRecognition({
+  const handleVoiceResult = useCallback((text: string) => {
+    setInput((prev) => prev + (prev ? ' ' : '') + text);
+  }, []);
+
+  const handleVoiceError = useCallback((error: string) => {
+    console.error('Voice recognition error:', error);
+  }, []);
+
+  const { isListening, isSupported, toggleListening } = useVoiceRecognition({
     language: LANGUAGE_TO_SPEECH_CODE[language],
-    onResult: (text) => {
-      setInput((prev) => prev + (prev ? ' ' : '') + text);
-    },
-    onError: (error) => {
-      toast.error(t('voiceError'));
-      console.error('Voice recognition error:', error);
-    },
+    onResult: handleVoiceResult,
+    onError: handleVoiceError,
   });
 
   useEffect(() => {
@@ -47,13 +50,6 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, initialValue })
       setInput(initialValue);
     }
   }, [initialValue]);
-
-  // Update input with interim transcript while listening
-  useEffect(() => {
-    if (isListening && transcript) {
-      // Show interim results in a lighter way
-    }
-  }, [transcript, isListening]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
