@@ -115,6 +115,61 @@
     --chat-user: 199 89% 20%;
     --chat-bot: 222 47% 18%;
   }
+
+  /* Eye Comfort Mode - Warm, low blue light theme */
+  .eye-comfort {
+    --background: 40 30% 96%;
+    --foreground: 30 20% 20%;
+
+    --card: 40 40% 98%;
+    --card-foreground: 30 20% 20%;
+
+    --popover: 40 40% 98%;
+    --popover-foreground: 30 20% 20%;
+
+    --primary: 25 70% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 40 30% 90%;
+    --secondary-foreground: 30 20% 20%;
+
+    --muted: 40 25% 90%;
+    --muted-foreground: 30 15% 45%;
+
+    --accent: 35 60% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 40 80% 50%;
+    --warning-foreground: 30 20% 15%;
+
+    --success: 80 50% 40%;
+    --success-foreground: 0 0% 100%;
+
+    --emergency: 0 70% 55%;
+    --emergency-foreground: 0 0% 100%;
+
+    --border: 35 25% 85%;
+    --input: 35 25% 88%;
+    --ring: 25 70% 50%;
+
+    --sidebar-background: 40 35% 95%;
+    --sidebar-foreground: 30 20% 20%;
+    --sidebar-primary: 25 70% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 40 30% 88%;
+    --sidebar-accent-foreground: 30 20% 20%;
+    --sidebar-border: 35 25% 85%;
+    --sidebar-ring: 25 70% 50%;
+
+    --medical-blue: 25 70% 50%;
+    --medical-teal: 35 60% 45%;
+    --medical-light: 40 30% 96%;
+    --chat-user: 35 50% 92%;
+    --chat-bot: 40 40% 98%;
+  }
 }
 
 @layer base {

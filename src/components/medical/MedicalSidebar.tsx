@@ -9,9 +9,12 @@ import {
   Wind,
   Activity,
   Bug,
-  ChevronDown,
+  Sun,
+  Moon,
+  Eye,
 } from 'lucide-react';
 import { useLanguage, SUPPORTED_LANGUAGES, getQuickQuestions, Language } from '@/contexts/LanguageContext';
+import { useTheme, Theme } from '@/contexts/ThemeContext';
 import { Separator } from '@/components/ui/separator';
 import {
   Select,
@@ -25,8 +28,15 @@ interface MedicalSidebarProps {
   onQuickQuestion: (question: string) => void;
 }
 
+const THEME_OPTIONS: { value: Theme; icon: typeof Sun; labelKey: string }[] = [
+  { value: 'light', icon: Sun, labelKey: 'lightMode' },
+  { value: 'dark', icon: Moon, labelKey: 'darkMode' },
+  { value: 'eye-comfort', icon: Eye, labelKey: 'eyeComfortMode' },
+];
+
 const MedicalSidebar: React.FC<MedicalSidebarProps> = ({ onQuickQuestion }) => {
   const { language, setLanguage, t } = useLanguage();
+  const { theme, setTheme } = useTheme();
   const questions = getQuickQuestions(language);
 
   const quickTopics = [
@@ -44,6 +54,9 @@ const MedicalSidebar: React.FC<MedicalSidebarProps> = ({ onQuickQuestion }) => {
     { icon: Bug, label: t('dengue'), questionKey: 'dengue' as const },
   ];
 
+  const currentThemeOption = THEME_OPTIONS.find(opt => opt.value === theme);
+  const ThemeIcon = currentThemeOption?.icon || Sun;
+
   return (
     <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col h-full">
       {/* Logo */}
@@ -60,25 +73,54 @@ const MedicalSidebar: React.FC<MedicalSidebarProps> = ({ onQuickQuestion }) => {
       </div>
 
       {/* Language Dropdown */}
-      <div className="p-4 border-b border-sidebar-border">
-        <label className="text-sm font-medium text-sidebar-foreground mb-2 block">
-          {t('language')}
-        </label>
-        <Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
-          <SelectTrigger className="w-full bg-background">
-            <SelectValue placeholder={t('selectLanguage')} />
-          </SelectTrigger>
-          <SelectContent className="bg-popover z-50">
-            {SUPPORTED_LANGUAGES.map((lang) => (
-              <SelectItem key={lang.code} value={lang.code}>
+      <div className="p-4 border-b border-sidebar-border space-y-3">
+        <div>
+          <label className="text-sm font-medium text-sidebar-foreground mb-2 block">
+            {t('language')}
+          </label>
+          <Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
+            <SelectTrigger className="w-full bg-background">
+              <SelectValue placeholder={t('selectLanguage')} />
+            </SelectTrigger>
+            <SelectContent className="bg-popover z-50">
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <SelectItem key={lang.code} value={lang.code}>
+                  <span className="flex items-center gap-2">
+                    <span>{lang.nativeName}</span>
+                    <span className="text-muted-foreground text-xs">({lang.name})</span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Theme Dropdown */}
+        <div>
+          <label className="text-sm font-medium text-sidebar-foreground mb-2 block">
+            {t('theme')}
+          </label>
+          <Select value={theme} onValueChange={(value) => setTheme(value as Theme)}>
+            <SelectTrigger className="w-full bg-background">
+              <SelectValue>
                 <span className="flex items-center gap-2">
-                  <span>{lang.nativeName}</span>
-                  <span className="text-muted-foreground text-xs">({lang.name})</span>
+                  <ThemeIcon className="w-4 h-4" />
+                  <span>{t(currentThemeOption?.labelKey || 'lightMode')}</span>
                 </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-popover z-50">
+              {THEME_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  <span className="flex items-center gap-2">
+                    <option.icon className="w-4 h-4" />
+                    <span>{t(option.labelKey)}</span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Quick Topics */}
