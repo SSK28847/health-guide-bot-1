@@ -11,13 +11,14 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
   const [transcript, setTranscript] = useState('');
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const optionsRef = useRef(options);
+  const onResultRef = useRef(options.onResult);
+  const onErrorRef = useRef(options.onError);
 
-  // Keep options ref updated
-  useEffect(() => {
-    optionsRef.current = options;
-  }, [options]);
+  // Keep callback refs updated without causing re-renders
+  onResultRef.current = options.onResult;
+  onErrorRef.current = options.onError;
 
+  // Initialize speech recognition once
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     setIsSupported(!!SpeechRecognition);
@@ -26,11 +27,6 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
-      
-      // Set initial language
-      if (options.language) {
-        recognition.lang = options.language;
-      }
 
       recognition.onresult = (event) => {
         let finalTranscript = '';
@@ -48,16 +44,16 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
         const currentTranscript = finalTranscript || interimTranscript;
         setTranscript(currentTranscript);
         
-        if (finalTranscript && optionsRef.current.onResult) {
-          optionsRef.current.onResult(finalTranscript);
+        if (finalTranscript && onResultRef.current) {
+          onResultRef.current(finalTranscript);
         }
       };
 
       recognition.onerror = (event) => {
         console.error('Speech recognition error:', event.error);
         setIsListening(false);
-        if (optionsRef.current.onError) {
-          optionsRef.current.onError(event.error);
+        if (onErrorRef.current) {
+          onErrorRef.current(event.error);
         }
       };
 
@@ -79,23 +75,8 @@ export const useVoiceRecognition = (options: UseVoiceRecognitionOptions = {}) =>
   useEffect(() => {
     if (recognitionRef.current && options.language) {
       recognitionRef.current.lang = options.language;
-      
-      // If currently listening, restart with new language
-      if (isListening) {
-        recognitionRef.current.stop();
-        setTimeout(() => {
-          if (recognitionRef.current) {
-            try {
-              recognitionRef.current.start();
-              setIsListening(true);
-            } catch (error) {
-              console.error('Failed to restart recognition with new language:', error);
-            }
-          }
-        }, 100);
-      }
     }
-  }, [options.language, isListening]);
+  }, [options.language]);
 
   const startListening = useCallback(() => {
     if (recognitionRef.current && !isListening) {
