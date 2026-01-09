@@ -78,7 +78,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, initialValue })
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 border-t border-border bg-card">
+    <form onSubmit={handleSubmit} className="p-4 border-t border-border bg-card" data-tutorial="chat-input">
       <div className="max-w-4xl mx-auto flex gap-3">
         <div className="relative flex-1">
           <Textarea
@@ -101,6 +101,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, initialValue })
               isListening ? 'animate-pulse' : ''
             }`}
             title={isListening ? t('voiceStop') : t('voiceStart')}
+            data-tutorial="voice-input"
           >
             {isListening ? (
               <MicOff className="w-4 h-4" />

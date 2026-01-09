@@ -30,7 +30,7 @@ const WelcomeMessage: React.FC<WelcomeMessageProps> = ({ onExampleClick }) => {
         {t('welcomeMessage')}
       </p>
 
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md" data-tutorial="example-questions">
         <p className="text-sm font-medium text-muted-foreground mb-3">
           {t('exampleQuestions')}
         </p>
