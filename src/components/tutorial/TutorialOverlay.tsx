@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
-import { X, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Sparkles, MousePointer, Keyboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TargetRect {
@@ -17,7 +17,44 @@ const TutorialOverlay: React.FC = () => {
   const { t } = useLanguage();
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [showKeyboardHint, setShowKeyboardHint] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
+
+  // Keyboard navigation
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (!isActive) return;
+    
+    switch (e.key) {
+      case 'ArrowRight':
+      case 'Enter':
+        e.preventDefault();
+        nextStep();
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        previousStep();
+        break;
+      case 'Escape':
+        e.preventDefault();
+        skipTutorial();
+        break;
+    }
+  }, [isActive, nextStep, previousStep, skipTutorial]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
+  // Show keyboard hint after a delay
+  useEffect(() => {
+    if (isActive) {
+      const timer = setTimeout(() => setShowKeyboardHint(true), 3000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowKeyboardHint(false);
+    }
+  }, [isActive, currentStepIndex]);
 
   // Find and track the target element
   useEffect(() => {
@@ -41,6 +78,7 @@ const TutorialOverlay: React.FC = () => {
 
     // Trigger animation on step change
     setIsAnimating(true);
+    setShowKeyboardHint(false);
     const animTimer = setTimeout(() => setIsAnimating(false), 300);
 
     updateTargetRect();
@@ -75,8 +113,8 @@ const TutorialOverlay: React.FC = () => {
 
   // Calculate tooltip position
   const getTooltipPosition = () => {
-    const tooltipWidth = 320;
-    const tooltipHeight = 200;
+    const tooltipWidth = 340;
+    const tooltipHeight = 280;
     const offset = 16;
 
     let top = 0;
@@ -145,10 +183,10 @@ const TutorialOverlay: React.FC = () => {
         />
       </svg>
 
-      {/* Spotlight highlight ring */}
+      {/* Spotlight highlight ring with pulse animation */}
       <div
         className={cn(
-          "absolute border-2 border-primary rounded-lg pointer-events-none transition-all duration-300",
+          "absolute rounded-lg transition-all duration-300",
           isAnimating && "animate-pulse"
         )}
         style={{
@@ -156,17 +194,37 @@ const TutorialOverlay: React.FC = () => {
           left: spotlightStyle.left,
           width: spotlightStyle.width,
           height: spotlightStyle.height,
-          boxShadow: '0 0 0 4px hsl(var(--primary) / 0.3), 0 0 20px 8px hsl(var(--primary) / 0.2)',
+          boxShadow: '0 0 0 3px hsl(var(--primary)), 0 0 0 6px hsl(var(--primary) / 0.3), 0 0 30px 10px hsl(var(--primary) / 0.2)',
+          pointerEvents: currentStep.isInteractive ? 'auto' : 'none',
         }}
       />
+
+      {/* Interactive area indicator */}
+      {currentStep.isInteractive && (
+        <div
+          className="absolute flex items-center justify-center pointer-events-none"
+          style={{
+            top: spotlightStyle.top,
+            left: spotlightStyle.left,
+            width: spotlightStyle.width,
+            height: spotlightStyle.height,
+          }}
+        >
+          <div className="absolute inset-0 border-2 border-dashed border-primary/50 rounded-lg animate-pulse" />
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full flex items-center gap-1 whitespace-nowrap">
+            <MousePointer className="w-3 h-3" />
+            {t('tutorialTryIt')}
+          </div>
+        </div>
+      )}
 
       {/* Tooltip */}
       <div
         ref={tooltipRef}
         className={cn(
-          "absolute w-80 bg-card border border-border rounded-xl shadow-2xl pointer-events-auto",
+          "absolute w-[340px] bg-card border border-border rounded-xl shadow-2xl pointer-events-auto",
           "transition-all duration-300 ease-out",
-          isAnimating ? "opacity-0 scale-95" : "opacity-100 scale-100"
+          isAnimating ? "opacity-0 scale-95 translate-y-2" : "opacity-100 scale-100 translate-y-0"
         )}
         style={{
           top: tooltipPos.top,
@@ -174,15 +232,17 @@ const TutorialOverlay: React.FC = () => {
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border bg-primary/5 rounded-t-xl">
+        <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-primary/10 to-primary/5 rounded-t-xl">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
+            <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-primary" />
+            </div>
             <h3 className="font-semibold text-foreground">{t(currentStep.titleKey)}</h3>
           </div>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 rounded-full"
+            className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive"
             onClick={skipTutorial}
           >
             <X className="w-4 h-4" />
@@ -190,43 +250,62 @@ const TutorialOverlay: React.FC = () => {
         </div>
 
         {/* Content */}
-        <div className="p-4">
-          <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+        <div className="p-4 space-y-3">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             {t(currentStep.descriptionKey)}
           </p>
           
           {currentStep.isInteractive && currentStep.interactionHint && (
-            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mb-3">
-              <p className="text-xs text-primary font-medium flex items-center gap-2">
+            <div className="bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/20 rounded-lg p-3">
+              <p className="text-xs text-primary font-medium flex items-center gap-2 mb-1">
                 <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
                 {t(currentStep.interactionHint)}
               </p>
+              <p className="text-xs text-primary/70">
+                {t('tutorialClickToContinue')}
+              </p>
+            </div>
+          )}
+
+          {/* Keyboard hint */}
+          {showKeyboardHint && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg p-2 animate-fade-in">
+              <Keyboard className="w-3 h-3" />
+              {t('tutorialKeyboardHint')}
             </div>
           )}
         </div>
 
+        {/* Progress dots */}
+        <div className="flex items-center justify-center gap-1.5 py-2 border-t border-border/50">
+          {Array.from({ length: totalSteps }).map((_, index) => (
+            <div
+              key={index}
+              className={cn(
+                "w-2 h-2 rounded-full transition-all duration-300",
+                index === currentStepIndex
+                  ? "bg-primary w-6"
+                  : index < currentStepIndex
+                  ? "bg-primary/50"
+                  : "bg-muted-foreground/30"
+              )}
+            />
+          ))}
+        </div>
+
         {/* Footer */}
         <div className="flex items-center justify-between p-4 border-t border-border bg-muted/30 rounded-b-xl">
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground font-medium">
             {t('tutorialStep')} {currentStepIndex + 1} / {totalSteps}
           </span>
           
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={skipTutorial}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              {t('tutorialSkip')}
-            </Button>
-            
             {currentStepIndex > 0 && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={previousStep}
-                className="gap-1"
+                className="gap-1 h-8"
               >
                 <ChevronLeft className="w-4 h-4" />
                 {t('tutorialPrev')}
@@ -236,7 +315,7 @@ const TutorialOverlay: React.FC = () => {
             <Button
               size="sm"
               onClick={nextStep}
-              className="gap-1"
+              className="gap-1 h-8 min-w-[100px]"
             >
               {currentStepIndex === totalSteps - 1 ? t('tutorialFinish') : t('tutorialNext')}
               {currentStepIndex < totalSteps - 1 && <ChevronRight className="w-4 h-4" />}

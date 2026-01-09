@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import TutorialButton from '@/components/tutorial/TutorialButton';
 
 interface MedicalSidebarProps {
   onQuickQuestion: (question: string) => void;
@@ -164,8 +165,9 @@ const MedicalSidebar: React.FC<MedicalSidebarProps> = ({ onQuickQuestion }) => {
         </div>
       </div>
 
-      {/* Disclaimer Footer */}
-      <div className="p-4 border-t border-sidebar-border bg-muted/50">
+      {/* Tutorial Button & Disclaimer Footer */}
+      <div className="p-4 border-t border-sidebar-border bg-muted/50 space-y-3">
+        <TutorialButton />
         <p className="text-xs text-muted-foreground leading-relaxed">
           {t('disclaimer')}
         </p>
