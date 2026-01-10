@@ -19,10 +19,16 @@ const detectEmergency = (text: string): boolean => {
   return EMERGENCY_KEYWORDS.some(keyword => lowerText.includes(keyword.toLowerCase()));
 };
 
+export interface RAGSource {
+  id: string;
+  category: string;
+}
+
 export const useMedicalChat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showEmergency, setShowEmergency] = useState(false);
+  const [lastSources, setLastSources] = useState<RAGSource[]>([]);
   const { language } = useLanguage();
 
   const sendMessage = useCallback(async (content: string) => {
@@ -34,6 +40,7 @@ export const useMedicalChat = () => {
 
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
+    setLastSources([]);
 
     // Check for emergency keywords
     const isEmergency = detectEmergency(content);
@@ -54,6 +61,11 @@ export const useMedicalChat = () => {
       });
 
       if (error) throw error;
+
+      // Store RAG sources if available
+      if (data.sources && Array.isArray(data.sources)) {
+        setLastSources(data.sources);
+      }
 
       const assistantMessage: Message = {
         id: crypto.randomUUID(),
@@ -85,12 +97,14 @@ export const useMedicalChat = () => {
   const clearMessages = useCallback(() => {
     setMessages([]);
     setShowEmergency(false);
+    setLastSources([]);
   }, []);
 
   return {
     messages,
     isLoading,
     showEmergency,
+    lastSources,
     sendMessage,
     clearEmergency,
     clearMessages,
