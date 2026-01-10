@@ -445,6 +445,42 @@ Enquanto espera ajuda:
 ⚠️ தாமதிக்காதீர்கள் - அவசரநிலையில் ஒவ்வொரு நிமிடமும் முக்கியம்!`,
 };
 
+// Helper function to retrieve RAG context
+async function retrieveRAGContext(query: string): Promise<{ context: string; sources: Array<{ id: string; category: string }> }> {
+  try {
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
+    
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      console.warn('Supabase environment variables not configured for RAG');
+      return { context: '', sources: [] };
+    }
+
+    const ragResponse = await fetch(`${SUPABASE_URL}/functions/v1/pinecone-rag`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, action: 'search' }),
+    });
+
+    if (!ragResponse.ok) {
+      console.warn('RAG retrieval failed:', ragResponse.status);
+      return { context: '', sources: [] };
+    }
+
+    const ragData = await ragResponse.json();
+    return {
+      context: ragData.context || '',
+      sources: ragData.sources || []
+    };
+  } catch (error) {
+    console.warn('RAG retrieval error:', error);
+    return { context: '', sources: [] };
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -468,7 +504,34 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = SYSTEM_PROMPTS[language] || SYSTEM_PROMPTS.en;
+    // Get the latest user message for RAG retrieval
+    const latestUserMessage = messages.filter((m: { role: string }) => m.role === 'user').pop();
+    const userQuery = latestUserMessage?.content || '';
+
+    // Retrieve relevant context from RAG
+    console.log('Retrieving RAG context for query:', userQuery.substring(0, 100));
+    const { context: ragContext, sources } = await retrieveRAGContext(userQuery);
+    
+    // Build enhanced system prompt with RAG context
+    let systemPrompt = SYSTEM_PROMPTS[language] || SYSTEM_PROMPTS.en;
+    
+    if (ragContext) {
+      const ragInstructions: Record<string, string> = {
+        en: `\n\nRELEVANT MEDICAL KNOWLEDGE BASE CONTEXT:\nUse the following verified medical information to enhance your response when relevant:\n\n${ragContext}\n\nNote: This information comes from a verified medical knowledge base. Reference it when applicable to provide more accurate guidance.`,
+        hi: `\n\nप्रासंगिक चिकित्सा ज्ञान आधार संदर्भ:\nजब प्रासंगिक हो तो अपनी प्रतिक्रिया को बढ़ाने के लिए निम्नलिखित सत्यापित चिकित्सा जानकारी का उपयोग करें:\n\n${ragContext}\n\nनोट: यह जानकारी एक सत्यापित चिकित्सा ज्ञान आधार से आती है।`,
+        es: `\n\nCONTEXTO DE BASE DE CONOCIMIENTO MÉDICO RELEVANTE:\nUse la siguiente información médica verificada para mejorar su respuesta cuando sea relevante:\n\n${ragContext}`,
+        fr: `\n\nCONTEXTE DE BASE DE CONNAISSANCES MÉDICALES:\nUtilisez les informations médicales vérifiées suivantes pour améliorer votre réponse:\n\n${ragContext}`,
+        de: `\n\nRELEVANTER MEDIZINISCHER WISSENSKONTEXT:\nVerwenden Sie die folgenden verifizierten medizinischen Informationen:\n\n${ragContext}`,
+        ar: `\n\nسياق قاعدة المعرفة الطبية:\nاستخدم المعلومات الطبية التالية:\n\n${ragContext}`,
+        zh: `\n\n相关医学知识库上下文:\n使用以下经过验证的医学信息:\n\n${ragContext}`,
+        pt: `\n\nCONTEXTO DA BASE DE CONHECIMENTO MÉDICO:\nUse as seguintes informações médicas verificadas:\n\n${ragContext}`,
+        bn: `\n\nপ্রাসঙ্গিক চিকিৎসা জ্ঞান ভিত্তি প্রসঙ্গ:\nনিম্নলিখিত যাচাইকৃত চিকিৎসা তথ্য ব্যবহার করুন:\n\n${ragContext}`,
+        ta: `\n\nதொடர்புடைய மருத்துவ அறிவு அடிப்படை சூழல்:\nபின்வரும் சரிபார்க்கப்பட்ட மருத்துவ தகவலைப் பயன்படுத்தவும்:\n\n${ragContext}`,
+      };
+      
+      systemPrompt += ragInstructions[language] || ragInstructions.en;
+      console.log('RAG context added from sources:', sources.map(s => s.id).join(', '));
+    }
 
     console.log('Sending request to Lovable AI Gateway...');
     console.log('Messages count:', messages.length);
@@ -528,9 +591,13 @@ serve(async (req) => {
       (fallbackMessages[language] || fallbackMessages.en);
 
     console.log('AI response received successfully');
+    console.log('RAG sources used:', sources.length > 0 ? sources.map(s => s.id).join(', ') : 'none');
 
     return new Response(
-      JSON.stringify({ response: aiResponse }),
+      JSON.stringify({ 
+        response: aiResponse,
+        sources: sources.length > 0 ? sources : undefined
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
