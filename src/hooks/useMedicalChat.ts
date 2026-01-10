@@ -1,3 +1,4 @@
+// Medical chat hook with RAG support - v2
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
